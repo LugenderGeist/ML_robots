@@ -75,11 +75,7 @@ def add_features(df):
 
     return df.drop(['N1', 'N2', 'N3'], axis=1)
 
-# ============================================================================
-# ЗАГРУЗКА И ОБРАБОТКА ОБУЧАЮЩИХ ДАННЫХ (A+B)
-# ============================================================================
-
-# Чтение XLSX файла
+# ЗАГРУЗКА И ОБРАБОТКА ОБУЧАЮЩИХ ДАННЫХ
 file_path = "Data_Set_(A+B).xlsx"
 df = pd.read_excel(file_path, engine='openpyxl')
 
@@ -93,21 +89,13 @@ x = df.drop('Type', axis=1)  # все признаки
 y = df['Type']  # целевая переменная
 # x, y = stratified_shuffle(x, y, random_state=42)
 
-# ============================================================================
-# МАСШТАБИРОВАНИЕ ДАННЫХ
-# ============================================================================
-
-# Создаем и обучаем scaler на обучающих данных
+# НОРМИРОВАНИЕ И МАСШТАБИРОВАНИЕ ДАННЫХ
 scaler = StandardScaler()
 sampler = SMOTE(random_state=42)
 x_scaled = scaler.fit_transform(x)
 x_balanced, y_balanced = sampler.fit_resample(x_scaled, y)
 
-# ============================================================================
-# ПЕРЕБОР ГИПЕРПАРАМЕТРОВ С GRIDSEARCHCV
-# ============================================================================
-
-# Базовая модель MLP
+# ПЕРЕБОР ГИПЕРПАРАМЕТРОВ
 mlp = MLPClassifier(max_iter=1200, random_state=42, verbose=False)
 
 # Сетка гиперпараметров для перебора
@@ -134,10 +122,6 @@ grid_search = GridSearchCV(
 grid_search.fit(x_balanced, y_balanced)
 results = pd.DataFrame(grid_search.cv_results_)
 
-# ============================================================================
-# ВЫБОР МОДЕЛИ С МАКСИМАЛЬНЫМ F1-SCORE
-# ============================================================================
-
 # Находим модель с максимальным F1-score
 best_f1_model = results.loc[results['mean_test_f1'].idxmax()]
 
@@ -145,9 +129,7 @@ print(f"\nЛУЧШАЯ МОДЕЛЬ (по максимальному F1-score):"
 for param, value in best_f1_model['params'].items():
     print(f"    {param}: {value}")
 
-# ============================================================================
-# ГРАФИК: Все комбинации с выделением лучшей модели
-# ============================================================================
+# ГИСТОГРАММА
 
 # Создаем подписи для каждой комбинации параметров
 param_labels = []
@@ -165,7 +147,6 @@ param_labels_sorted = [param_labels[i] for i in results_sorted.index]
 # Находим позицию лучшей модели
 best_pos = np.where(results_sorted.index == best_f1_model.name)[0][0]
 
-# График
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 10))
 
 n_combinations = len(results_sorted)
@@ -182,7 +163,7 @@ ax1.bar(x_pos, acc_means, yerr=acc_stds, capsize=3,
         color=colors, edgecolor='black', alpha=0.7,
         error_kw={'linewidth': 1.5, 'capthick': 1.5})
 ax1.set_ylabel('Accuracy', fontsize=12)
-ax1.set_title('Accuracy для всех комбинаций гиперпараметров (масштабированные данные)', fontsize=12)
+ax1.set_title('Accuracy для всех комбинаций гиперпараметров', fontsize=12)
 ax1.set_xticks(x_pos)
 ax1.set_xticklabels(param_labels_sorted, rotation=90, ha='center', fontsize=7)
 ax1.set_ylim(0, 1)
@@ -196,7 +177,7 @@ ax2.bar(x_pos, f1_means, yerr=f1_stds, capsize=3,
         color=colors, edgecolor='black', alpha=0.7,
         error_kw={'linewidth': 1.5, 'capthick': 1.5})
 ax2.set_ylabel('F1-score', fontsize=12)
-ax2.set_title('F1-score для всех комбинаций гиперпараметров (масштабированные данные)', fontsize=12)
+ax2.set_title('F1-score для всех комбинаций гиперпараметров', fontsize=12)
 ax2.set_xticks(x_pos)
 ax2.set_xticklabels(param_labels_sorted, rotation=90, ha='center', fontsize=7)
 ax2.set_ylim(0, 1)
@@ -206,14 +187,8 @@ plt.suptitle('РЕЗУЛЬТАТЫ GRID SEARCH (StandardScaler)', fontsize=14, f
 plt.tight_layout()
 plt.show()
 
-# ============================================================================
-# КРОСС-ВАЛИДАЦИЯ ЛУЧШЕЙ МОДЕЛИ
-# ============================================================================
 
-print("\n" + "="*60)
-print("КРОСС-ВАЛИДАЦИЯ ЛУЧШЕЙ МОДЕЛИ (5-fold)")
-print("="*60)
-
+# КРОСС-ВАЛИДАЦИЯ
 # Получаем параметры лучшей модели
 best_params = best_f1_model['params']
 
@@ -237,11 +212,8 @@ print(f"F1-score по фолдам: {np.round(cv_scores_f1, 4)}")
 print(f"\nСредняя Accuracy: {cv_scores_accuracy.mean():.4f} (+/- {cv_scores_accuracy.std():.4f})")
 print(f"Средний F1-score: {cv_scores_f1.mean():.4f} (+/- {cv_scores_f1.std():.4f})")
 
-# ============================================================================
-# ТЕСТИРОВАНИЕ НА ВЫБОРКЕ C
-# ============================================================================
 
-# Загрузка тестовых данных
+# ТЕСТИРОВАНИЕ НА ВЫБОРКЕ C
 file_path_new = "Data_Set_C.xlsx"
 df_new = pd.read_excel(file_path_new, engine='openpyxl')
 
@@ -251,7 +223,7 @@ df_new = add_features(df_new)
 x_test = df_new.drop('Type', axis=1)
 y_test = df_new['Type']
 
-# Масштабируем тестовые данные (используем тот же scaler!)
+# Масштабируем тестовые данные
 x_test_scaled = scaler.transform(x_test)
 
 # Обучение на всех обучающих данных и предсказание
