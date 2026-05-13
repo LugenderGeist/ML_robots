@@ -8,52 +8,53 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 from imblearn.over_sampling import SMOTE, ADASYN
+import random
+import openpyxl
 
 import warnings
-warnings.filterwarnings('ignore', module='sklearn')
+#warnings.filterwarnings('ignore', module='sklearn')
 
-def stratified_shuffle(x, y, random_state=None):
+def stratified_shuffle(a, b, random_state=None):
     # Устанавливаем random seed
     if random_state is not None:
-        np.random.seed(random_state)
+        random.seed(random_state)
 
     # Преобразуем в списки для удобной работы
-    if hasattr(x, 'values'):
-        x = x.values.tolist()
-    if hasattr(y, 'values'):
-        y = y.values.tolist()
+    if hasattr(a, 'values'):
+        a = a.values.tolist()
+    if hasattr(b, 'values'):
+        b = b.values.tolist()
 
     # Получаем уникальные классы
-    unique_classes = np.unique(y)
+    unique_classes = np.unique(b)
 
     shuffled_indices = []
 
     # Для каждого класса
     for class_label in unique_classes:
         # Находим индексы объектов этого класса
-        class_indices = [i for i, label in enumerate(y) if label == class_label]
-        n_class = len(class_indices)
+        class_indices = [n for n, label in enumerate(b) if label == class_label]
 
         # Перемешиваем индексы объектов этого класса
-        np.random.shuffle(class_indices)
+        random.shuffle(class_indices)
         shuffled_indices.extend(class_indices)
 
     # Применяем индексы к x и y
-    x_shuffled = [x[i] for i in shuffled_indices]
-    y_shuffled = [y[i] for i in shuffled_indices]
+    a_shuffled = [a[i] in shuffled_indices]
+    b_shuffled = [b[i] in shuffled_indices]
 
-    return x_shuffled, y_shuffled
+    return a_shuffled, b_shuffled
 
-def add_features(df):
+def add_features(data):
     # Расчет vx, vy, omega
-    vx = (4 * (df['V3real'] + df['V1real']) * np.cos(np.radians(30))) / 15
-    vy = (4 * (df['V3real'] + df['V1real']) * np.sin(np.radians(30)) - 4 * df['V2real']) / 15
-    omega = (df['V1real'] + df['V2real'] + df['V3real']) / 6
+    vx = (4 * (data['V3real'] + data['V1real']) * np.cos(np.radians(30))) / 15
+    vy = (4 * (data['V3real'] + data['V1real']) * np.sin(np.radians(30)) - 4 * data['V2real']) / 15
+    omega = (data['V1real'] + data['V2real'] + data['V3real']) / 6
 
     # Расчет Ix, Iy, Iphi
-    Ix = (2 * (df['I1'] + df['I3']) * np.cos(np.radians(30))) / 3
-    Iy = (2 * (df['I1'] + df['I3']) * np.sin(np.radians(30)) - 2 * df['I2']) / 15
-    Iphi = (df['I1'] + df['I2'] + df['I3']) / 3
+    Ix = (2 * (data['I1'] + data['I3']) * np.cos(np.radians(30))) / 3
+    Iy = (2 * (data['I1'] + data['I3']) * np.sin(np.radians(30)) - 2 * data['I2']) / 15
+    Iphi = (data['I1'] + data['I2'] + data['I3']) / 3
     Isum = Ix + Iy + Iphi
 
     # Расчет Tx, Ty, Tz
@@ -62,18 +63,18 @@ def add_features(df):
     Tz = omega / Iphi
 
     # Добавление в DataFrame
-    df['vx'] = vx
-    df['vy'] = vy
-    df['omega'] = omega
-    df['Ix'] = Ix
-    df['Iy'] = Iy
-    df['Iphi'] = Iphi
-    df['Isum'] = Isum
-    df['Tx'] = Tx
-    df['Ty'] = Ty
-    df['Tz'] = Tz
+    data['vx'] = vx
+    data['vy'] = vy
+    data['omega'] = omega
+    data['Ix'] = Ix
+    data['Iy'] = Iy
+    data['Iphi'] = Iphi
+    data['Isum'] = Isum
+    data['Tx'] = Tx
+    data['Ty'] = Ty
+    data['Tz'] = Tz
 
-    return df.drop(['N1', 'N2', 'N3'], axis=1)
+    return data.drop(['N1', 'N2', 'N3'], axis=1)
 
 # ЗАГРУЗКА И ОБРАБОТКА ОБУЧАЮЩИХ ДАННЫХ
 file_path = "Data_Set_(A+B).xlsx"
@@ -91,7 +92,7 @@ y = df['Type']  # целевая переменная
 
 # НОРМИРОВАНИЕ И МАСШТАБИРОВАНИЕ ДАННЫХ
 scaler = StandardScaler()
-sampler = SMOTE(random_state=42)
+sampler = ADASYN(random_state=42)
 x_scaled = scaler.fit_transform(x)
 x_balanced, y_balanced = sampler.fit_resample(x_scaled, y)
 
@@ -186,7 +187,6 @@ ax2.grid(True, alpha=0.3, axis='y')
 plt.suptitle('РЕЗУЛЬТАТЫ GRID SEARCH (StandardScaler)', fontsize=14, fontweight='bold')
 plt.tight_layout()
 plt.show()
-
 
 # КРОСС-ВАЛИДАЦИЯ
 # Получаем параметры лучшей модели
